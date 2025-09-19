@@ -1,6 +1,6 @@
 import torch
 import gradio as gr
-from chatterbox.vc import ChatterboxVC
+from src.chatterbox.vc import ChatterboxVC
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -21,7 +21,8 @@ demo = gr.Interface(
         gr.Audio(sources=["upload", "microphone"], type="filepath", label="Target voice audio file (if none, the default voice is used)", value=None),
     ],
     "audio",
+    analytics_enabled=False
 )
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(inbrowser=True)

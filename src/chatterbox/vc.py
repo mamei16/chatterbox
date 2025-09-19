@@ -10,7 +10,7 @@ from .models.s3gen import S3GEN_SR, S3Gen
 
 
 REPO_ID = "ResembleAI/chatterbox"
-
+MODEL_CACHE_DIR = Path(__file__).parent / "models"
 
 class ChatterboxVC:
     ENC_COND_LEN = 6 * S3_SR
@@ -25,7 +25,6 @@ class ChatterboxVC:
         self.sr = S3GEN_SR
         self.s3gen = s3gen
         self.device = device
-        self.watermarker = perth.PerthImplicitWatermarker()
         if ref_dict is None:
             self.ref_dict = None
         else:
@@ -53,7 +52,9 @@ class ChatterboxVC:
     @classmethod
     def from_pretrained(cls, device) -> 'ChatterboxVC':
         for fpath in ["s3gen.pt", "conds.pt"]:
-            local_path = hf_hub_download(repo_id=REPO_ID, filename=fpath)
+            local_path = hf_hub_download(repo_id=REPO_ID, filename=fpath, cache_dir=MODEL_CACHE_DIR,
+                                         local_dir=MODEL_CACHE_DIR,
+                                         revision="f96a40510e8b10b046a37108bad33fd991814b9c")
 
         return cls.from_local(Path(local_path).parent, device)
 
@@ -84,5 +85,4 @@ class ChatterboxVC:
                 ref_dict=self.ref_dict,
             )
             wav = wav.squeeze(0).detach().cpu().numpy()
-            watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
-        return torch.from_numpy(watermarked_wav).unsqueeze(0)
+        return torch.from_numpy(wav).unsqueeze(0)

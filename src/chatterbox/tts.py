@@ -16,6 +16,7 @@ from .models.t3.modules.cond_enc import T3Cond
 
 
 REPO_ID = "ResembleAI/chatterbox"
+MODEL_CACHE_DIR = Path(__file__).parent / "models"
 
 
 def punc_norm(text: str) -> str:
@@ -120,7 +121,6 @@ class ChatterboxTTS:
         self.tokenizer = tokenizer
         self.device = device
         self.conds = conds
-        self.watermarker = perth.PerthImplicitWatermarker()
 
     @classmethod
     def from_local(cls, ckpt_dir, device) -> 'ChatterboxTTS':
@@ -128,12 +128,12 @@ class ChatterboxTTS:
 
         ve = VoiceEncoder()
         ve.load_state_dict(
-            torch.load(ckpt_dir / "ve.pt")
+            torch.load(ckpt_dir / "ve.pt", weights_only=True)
         )
         ve.to(device).eval()
 
         t3 = T3()
-        t3_state = torch.load(ckpt_dir / "t3_cfg.pt")
+        t3_state = torch.load(ckpt_dir / "t3_cfg.pt", weights_only=True)
         if "model" in t3_state.keys():
             t3_state = t3_state["model"][0]
         t3.load_state_dict(t3_state)
@@ -141,7 +141,7 @@ class ChatterboxTTS:
 
         s3gen = S3Gen()
         s3gen.load_state_dict(
-            torch.load(ckpt_dir / "s3gen.pt")
+            torch.load(ckpt_dir / "s3gen.pt", weights_only=True)
         )
         s3gen.to(device).eval()
 
@@ -158,7 +158,9 @@ class ChatterboxTTS:
     @classmethod
     def from_pretrained(cls, device) -> 'ChatterboxTTS':
         for fpath in ["ve.pt", "t3_cfg.pt", "s3gen.pt", "tokenizer.json", "conds.pt"]:
-            local_path = hf_hub_download(repo_id=REPO_ID, filename=fpath)
+            local_path = hf_hub_download(repo_id=REPO_ID, filename=fpath, cache_dir=MODEL_CACHE_DIR,
+                                         local_dir=MODEL_CACHE_DIR,
+                                         revision="f96a40510e8b10b046a37108bad33fd991814b9c")
 
         return cls.from_local(Path(local_path).parent, device)
 
@@ -240,5 +242,4 @@ class ChatterboxTTS:
                 ref_dict=self.conds.gen,
             )
             wav = wav.squeeze(0).detach().cpu().numpy()
-            watermarked_wav = self.watermarker.apply_watermark(wav, sample_rate=self.sr)
-        return torch.from_numpy(watermarked_wav).unsqueeze(0)
+        return torch.from_numpy(wav).unsqueeze(0)
